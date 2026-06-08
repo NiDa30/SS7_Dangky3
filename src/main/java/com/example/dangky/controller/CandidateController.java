@@ -1,0 +1,86 @@
+package com.example.dangky.controller;
+
+import com.example.dangky.dto.ApiResponse;
+import com.example.dangky.dto.CandidateCreateDTO;
+import com.example.dangky.dto.CandidateUpdateDTO;
+import com.example.dangky.model.Candidate;
+import com.example.dangky.repository.CandidateRepository;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/candidates")
+public class CandidateController {
+
+    private final CandidateRepository candidateRepository;
+
+    // Constructor injection
+    public CandidateController(CandidateRepository candidateRepository) {
+        this.candidateRepository = candidateRepository;
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<Candidate>> registerCandidate(@Valid @RequestBody CandidateCreateDTO dto) {
+        // Map DTO to Entity
+        Candidate candidate = new Candidate();
+        candidate.setFullName(dto.getFullName());
+        candidate.setEmail(dto.getEmail());
+        candidate.setAge(dto.getAge());
+        candidate.setYearsOfExperience(dto.getYearsOfExperience());
+
+        // Save candidate in database
+        Candidate savedCandidate = candidateRepository.save(candidate);
+
+        // Wrap candidate in ApiResponse success format
+        ApiResponse<Candidate> response = new ApiResponse<>(
+                "success",
+                "Candidate registered successfully",
+                savedCandidate
+        );
+
+        // Return response with 201 Created status
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<ApiResponse<Candidate>> updateCandidateProfile(
+            @PathVariable Long id,
+            @Valid @ModelAttribute CandidateUpdateDTO dto) {
+
+        Optional<Candidate> candidateOpt = candidateRepository.findById(id);
+
+        if (candidateOpt.isEmpty()) {
+            ApiResponse<Candidate> response = new ApiResponse<>(
+                    "error",
+                    "Candidate not found with id: " + id,
+                    null
+            );
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
+
+        Candidate candidate = candidateOpt.get();
+        candidate.setAddress(dto.getAddress());
+        candidate.setBio(dto.getBio());
+
+        // Save updated candidate back to database
+        Candidate updatedCandidate = candidateRepository.save(candidate);
+
+        ApiResponse<Candidate> response = new ApiResponse<>(
+                "success",
+                "Candidate profile updated successfully",
+                updatedCandidate
+        );
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+}
